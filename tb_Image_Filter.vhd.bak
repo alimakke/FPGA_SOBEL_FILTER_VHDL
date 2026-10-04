@@ -1,0 +1,166 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity tb_image_filter is
+end tb_image_filter;
+
+architecture Behavioral of tb_image_filter is
+
+    -- Petite image pour la simulation
+    constant N : integer := 4;
+    constant M : integer := 4;
+
+    -- Signaux DUT
+    signal clk : std_logic := '0';
+
+    signal pixel_in : std_logic_vector(7 downto 0) := (others => '0');
+
+    signal pixel_out : std_logic_vector(7 downto 0);
+
+    signal pixel_in_valid : std_logic := '0';
+    signal pixel_out_valid : std_logic;
+
+    -- Période horloge
+    constant CLK_PERIOD : time := 10 ns;
+
+begin
+
+    ----------------------------------------------------------------
+    -- Instanciation du filtre
+    ----------------------------------------------------------------
+
+    DUT : entity work.image_filter
+        generic map (
+            N => N,
+            M => M
+        )
+        port map (
+            clk             => clk,
+            pixel_in        => pixel_in,
+            pixel_out       => pixel_out,
+            pixel_in_valid  => pixel_in_valid,
+            pixel_out_valid => pixel_out_valid
+        );
+
+
+    ----------------------------------------------------------------
+    -- Génération de l'horloge
+    ----------------------------------------------------------------
+
+    clk_process : process
+    begin
+
+        while true loop
+
+            clk <= '0';
+            wait for CLK_PERIOD / 2;
+
+            clk <= '1';
+            wait for CLK_PERIOD / 2;
+
+        end loop;
+
+    end process;
+
+
+    ----------------------------------------------------------------
+    -- Envoi de l'image
+    ----------------------------------------------------------------
+
+    stimulus : process
+    begin
+
+        -- Au début
+        pixel_in_valid <= '0';
+        pixel_in <= (others => '0');
+
+        wait for 20 ns;
+
+
+        ------------------------------------------------------------
+        -- Ligne 0
+        ------------------------------------------------------------
+
+        pixel_in_valid <= '1';
+
+        pixel_in <= x"01";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"04";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"AE";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"F0";
+        wait for CLK_PERIOD;
+
+
+        ------------------------------------------------------------
+        -- Ligne 1
+        ------------------------------------------------------------
+
+        pixel_in <= x"F3";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"32";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"21";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"29";
+        wait for CLK_PERIOD;
+
+
+        ------------------------------------------------------------
+        -- Ligne 2
+        ------------------------------------------------------------
+
+        pixel_in <= x"FE";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"32";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"21";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"0C";
+        wait for CLK_PERIOD;
+
+
+        ------------------------------------------------------------
+        -- Ligne 3
+        ------------------------------------------------------------
+
+        pixel_in <= x"0D";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"0E";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"0F";
+        wait for CLK_PERIOD;
+
+        pixel_in <= x"10";
+        wait for CLK_PERIOD;
+
+
+        ------------------------------------------------------------
+        -- Fin de l'image
+        ------------------------------------------------------------
+
+        pixel_in_valid <= '0';
+        pixel_in <= (others => '0');
+
+        wait for 100 ns;
+
+        report "FIN DE LA SIMULATION";
+
+        wait;
+
+    end process;
+
+end Behavioral;
