@@ -14,10 +14,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.image_pkg.all;
 
--- Filtre de Sobel 3x3, 1 pixel en entree par cycle.
--- Sortie : |Gx| + |Gy| sature a 255, un resultat par cycle a partir
--- de la ligne 2 (bords gauche/droit mis a 0).
--- Latence : 2 cycles entre l'entree d'un pixel et pixel_out.
+
 entity image_filter is
     generic ( N : integer := 64; M : integer := 64 );
     port (
@@ -32,36 +29,32 @@ end image_filter;
 architecture Behavioral of image_filter is
 
     type line_buffer_t is array (0 to M-1) of std_logic_vector(7 downto 0);
-    signal LB1 : line_buffer_t := (others => (others => '0'));  -- ligne r-1
-    signal LB2 : line_buffer_t := (others => (others => '0'));  -- ligne r-2
+    signal LB1 : line_buffer_t := (others => (others => '0'));  
+    signal LB2 : line_buffer_t := (others => (others => '0'));  
 
     signal row : integer range 0 to N-1 := 0;
     signal col : integer range 0 to M-1 := 0;
 
-    -- Fenetre 3x3
+    
     signal P1, P2, P3 : std_logic_vector(7 downto 0) := (others => '0');
     signal P4, P5, P6 : std_logic_vector(7 downto 0) := (others => '0');
     signal P7, P8, P9 : std_logic_vector(7 downto 0) := (others => '0');
 
-    -- Etage 1 : fenetre prete
+    
     signal start_calculation : std_logic := '0';
-    signal mask_left         : std_logic := '0';  -- colonne gauche hors image
-    signal mask_right        : std_logic := '0';  -- colonne droite hors image
+    signal mask_left         : std_logic := '0';  
+    signal mask_right        : std_logic := '0';  
 
-    -- Etage 2 : gradients
+    
     signal gx_reg   : signed(10 downto 0) := (others => '0');
     signal gy_reg   : signed(10 downto 0) := (others => '0');
     signal valid_s2 : std_logic := '0';
 
-    -- Etage 3 : sortie
+    
     signal pixel_out_r       : std_logic_vector(7 downto 0) := (others => '0');
     signal pixel_out_valid_r : std_logic := '0';
 
 begin
-
-    ----------------------------------------------------------------
-    -- Etage 1 : buffers de ligne + fenetre 3x3
-    ----------------------------------------------------------------
     process(clk)
     begin
         if rising_edge(clk) then
@@ -69,18 +62,14 @@ begin
 
             if pixel_in_valid = '1' then
 
-                -- Decalage de la fenetre + nouvelle colonne a droite
-                P1 <= P2;  P2 <= P3;  P3 <= LB2(col);   -- ligne r-2
-                P4 <= P5;  P5 <= P6;  P6 <= LB1(col);   -- ligne r-1
-                P7 <= P8;  P8 <= P9;  P9 <= pixel_in;   -- ligne r
 
-                -- Mise a jour des buffers (lecture des anciennes valeurs)
+                P1 <= P2;  P2 <= P3;  P3 <= LB2(col);  
+                P4 <= P5;  P5 <= P6;  P6 <= LB1(col);  
+                P7 <= P8;  P8 <= P9;  P9 <= pixel_in;   
                 LB2(col) <= LB1(col);
                 LB1(col) <= pixel_in;
 
-                -- Masques de bord
-                --  col = 0 : fenetre centree sur la colonne M-1 -> droite = 0
-                --  col = 1 : fenetre centree sur la colonne 0   -> gauche = 0
+
                 mask_right <= '0';
                 mask_left  <= '0';
                 if col = 0 then
@@ -90,12 +79,12 @@ begin
                     mask_left <= '1';
                 end if;
 
-                -- Fenetre valide
+
                 if (row >= 2 and col >= 1) or (row >= 3 and col = 0) then
                     start_calculation <= '1';
                 end if;
 
-                -- Compteurs
+
                 if col = M-1 then
                     col <= 0;
                     if row = N-1 then
@@ -111,11 +100,8 @@ begin
         end if;
     end process;
 
-    ----------------------------------------------------------------
-    -- Etage 2 : calcul de Gx et Gy
-    --   Gx = [-1 0 +1; -2 0 +2; -1 0 +1]
-    --   Gy = [-1 -2 -1; 0 0 0; +1 +2 +1]
-    ----------------------------------------------------------------
+
+
     process(clk)
         variable q1, q2, q3 : signed(10 downto 0);
         variable q4, q5, q6 : signed(10 downto 0);
@@ -155,9 +141,7 @@ begin
         end if;
     end process;
 
-    ----------------------------------------------------------------
-    -- Etage 3 : |Gx| + |Gy| sature a 255
-    ----------------------------------------------------------------
+ 
     process(clk)
         variable ax, ay, s : unsigned(11 downto 0);
     begin
@@ -168,7 +152,7 @@ begin
                 ax := unsigned(resize(abs(gx_reg), 12));
                 ay := unsigned(resize(abs(gy_reg), 12));
                 s  := ax + ay;
-		s := shift_right(ax + ay, 2);   -- divise par 4
+		s := shift_right(ax + ay, 2);   
 
                 if s > 255 then
                     pixel_out_r <= (others => '1');
